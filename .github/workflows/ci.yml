@@ -1,0 +1,130 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  api:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install API dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt -r requirements-dev.txt
+      - name: pytest
+        run: pytest -q
+
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Install and build web
+        run: |
+          npm ci
+          npm run build
+
+  e2e:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: neuroexam
+          POSTGRES_PASSWORD: neuroexam
+          POSTGRES_DB: neuroexam
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U neuroexam -d neuroexam"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql+psycopg://neuroexam:neuroexam@localhost:5432/neuroexam
+      DISABLE_LLM: "1"
+      VITE_USE_BACKEND: "1"
+      VITE_API_TARGET: http://127.0.0.1:8000
+      PLAYWRIGHT_BASE_URL: http://127.0.0.1:5173
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install API dependencies
+        working-directory: apps/api
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Apply migrations
+        working-directory: apps/api
+        run: alembic upgrade head
+
+      - name: Start API
+        working-directory: apps/api
+        run: |
+          python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 &
+
+      - name: Install web dependencies
+        run: npm ci
+
+      - name: Start web
+        run: |
+          npm run dev -w @repo/web -- --host 127.0.0.1 --port 5173 &
+
+      - name: Wait for API and web
+        shell: bash
+        run: |
+          for i in {1..60}; do
+            if curl -fsS http://127.0.0.1:8000/api/health | grep -q '"db_ok":true'; then
+              break
+            fi
+            sleep 2
+          done
+          curl -fsS http://127.0.0.1:8000/api/health | grep -q '"db_ok":true'
+
+          for i in {1..60}; do
+            if curl -fsS http://127.0.0.1:5173/login >/dev/null; then
+              break
+            fi
+            sleep 2
+          done
+          curl -fsS http://127.0.0.1:5173/login >/dev/null
+
+      - name: Install Playwright (Chromium)
+        working-directory: e2e
+        run: npx playwright@1.48.0 install --with-deps chromium
+
+      - name: Run Playwright tests
+        working-directory: e2e
+        run: npx playwright@1.48.0 test
+
+      - name: Upload Playwright artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            e2e/playwright-report
+            e2e/test-results

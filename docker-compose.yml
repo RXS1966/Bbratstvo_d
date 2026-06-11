@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: neuroexam-postgres
+    environment:
+      POSTGRES_USER: neuroexam
+      POSTGRES_PASSWORD: neuroexam
+      POSTGRES_DB: neuroexam
+    ports:
+      # 5433 — чтобы не конфликтовать с локальным PostgreSQL на Windows (5432)
+      - "5433:5432"
+    volumes:
+      - neuroexam_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U neuroexam -d neuroexam"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  neuroexam_pg_data:

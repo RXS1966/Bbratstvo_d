@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Расценки</title>
+  <link rel="stylesheet" href="/css/works.css" />
+  <style>
+    body{font-family:system-ui,Segoe UI,Arial; margin:24px;}
+    .top{display:flex; gap:12px; align-items:baseline; margin-bottom:16px;}
+    .muted{opacity:.7}
+    .grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:16px;}
+    .card{border:1px solid rgba(0,0,0,.12); border-radius:14px; padding:14px; background:#fff;}
+    .title{font-weight:700; margin:0 0 8px 0;}
+    .price{font-size:18px; font-weight:700; margin:0 0 6px 0;}
+    .desc{margin:0; opacity:.85}
+    .badge{display:inline-block; padding:4px 10px; border-radius:999px; border:1px solid rgba(0,0,0,.12); font-size:12px;}
+    .err{color:#b00020}
+
+    /* блок витрины (если хочешь — можно убрать, но пусть будет аккуратно) */
+    .catalog-shell{margin-top:18px; padding:12px; border:1px solid rgba(0,0,0,.10); border-radius:14px; background:#fafafa;}
+  </style>
+</head>
+<body>
+  <div class="top">
+    <h1 style="margin:0;">Расценки работ</h1>
+    <div class="muted">API: <a href="/api/works" target="_blank">/api/works</a></div>
+  </div>
+
+  <!-- ✅ ЭТОТ БЛОК НУЖЕН ДЛЯ renderCatalog() -->
+  <div class="catalog-shell">
+    <div id="catalog-mount" data-catalog-mount></div>
+  </div>
+
+  <!-- ниже оставляем твою старую логику (работает как раньше) -->
+  <div id="status" class="muted" style="margin-top:16px;">Загрузка…</div>
+  <div id="grid" class="grid" style="margin-top:12px;"></div>
+
+  <!-- подключаем твой рендерер (если путь другой — поправь) -->
+  <script src="/js/works.js" defer></script>
+
+  <script>
+    async function loadWorks(){
+      const status = document.getElementById('status');
+      const grid = document.getElementById('grid');
+
+      try{
+        const r = await fetch('/api/works', { cache: 'no-store' });
+        if(!r.ok) throw new Error('HTTP ' + r.status);
+        const data = await r.json();
+        const items = (data && data.items) ? data.items : [];
+
+        status.textContent = items.length ? `Найдено: ${items.length}` : 'Пока нет данных';
+        grid.innerHTML = '';
+
+        for(const it of items){
+          const title = it.title ?? '';
+          const price = it.price ?? '';
+          const unit  = it.unit ? `· ${it.unit}` : '';
+          const desc  = it.desc ?? '';
+
+          const el = document.createElement('div');
+          el.className = 'card';
+          el.innerHTML = `
+            <div class="title">${escapeHtml(title)}</div>
+            <div class="price">${escapeHtml(price)} <span class="badge">${escapeHtml(unit)}</span></div>
+            <p class="desc">${escapeHtml(desc)}</p>
+          `;
+          grid.appendChild(el);
+        }
+
+        // ✅ бонус: если хочешь прямо здесь проверить renderCatalog
+        // (работает только если works.js реально подключился и создал window.renderCatalog)
+        if (typeof window.renderCatalog === "function") {
+          // покажем в витрине те же работы:
+          window.renderCatalog("prices", { items: items }, document.getElementById("catalog-mount"));
+        }
+      }catch(e){
+        status.innerHTML = `<span class="err">Ошибка загрузки: ${escapeHtml(String(e))}</span>`;
+      }
+    }
+
+    function escapeHtml(s){
+      return String(s).replace(/[&<>"']/g, m => ({
+        '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+      }[m]));
+    }
+
+    loadWorks();
+  </script>
+</body>
+</html>

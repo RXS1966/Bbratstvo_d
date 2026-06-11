@@ -1,0 +1,13 @@
+1. Разработал архитектуру TypeScript monorepo («Нейроэкзаменатор HR MVP») на npm workspaces с разделением api/web/ui, базу данных в Docker PostgreSQL.
+
+2. Разработал FastAPI backend с ролями (кандидат/руководитель/admin), REST API для всех модулей HR-экзаменатора, миграциями Alembic и PostgreSQL.
+
+3. Разработал React-фронтенд (Vite, Tailwind) с UI-kit @repo/ui, 7 экранов (логин, главная, диагностика, кейс, результат, экзаменатор, кабинет руководителя) и настраиваемой связкой с API.
+
+4. Внедрил LLM-оценку (OpenAI/Ollama) с промптами для кейсов, генерацией вопросов и batch-проверкой экзамена, включая llm_client с повторами и таймаутами.
+
+5. Реализовал полный путь кандидата (диагностика → срез → кейс → результат → экзаменатор), ролевой доступ, демо-данные (seed_demo) и health-check (db_ok, llm_configured).
+
+6. Настроил pytest (18 тестов, SQLite + mock LLM), Playwright E2E (7 сценариев с Ollama) и CI в GitHub Actions (API, web-сборка, E2E).
+
+7. Подготовил документацию (VNESHNIY-ZAPUSK.md, API-справочник, README, roadmap), архив neuroexam-variant3-mvp-*.zip и выполнил финальный прогон (pytest + build + E2E) перед передачей проекта коллеге.

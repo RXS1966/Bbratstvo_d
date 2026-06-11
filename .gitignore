@@ -1,0 +1,25 @@
+node_modules
+dist
+dist-ssr
+*.log
+.env
+.env.local
+.env.*.local
+
+# Python
+.venv
+__pycache__
+*.pyc
+*.egg-info
+.pytest_cache
+
+# E2E / Playwright
+test-results
+playwright-report
+
+# Архивы (снапшоты — в GitHub Releases, не в git)
+*.zip
+
+# IDE
+.vscode
+.idea

@@ -1,0 +1,48 @@
+{
+  "items": [
+    {
+      "title": "ДСП плита 16мм 2500x1830 (мебельная)",
+      "price": "1 180 ₽/шт",
+      "desc": "Подходит для черновых работ и мебели.",
+      "image": "/assets/materials/dsp-16-2500x1830.jpg"
+     },
+     {
+       "title": "Стеновые панели 3D (комплект 4 шт)",
+       "price": "2 403 ₽",
+      "desc": "Декоративные панели для отделки стен.",
+       "image": "/assets/materials/panels-3d-4pcs.jpg"
+     },
+     {
+       "title": "Клей обойный Момент Классик 100г",
+       "price": "180 ₽",
+       "desc": "Для бумажных обоев, 3–4 рулона.",
+       "image": "/assets/materials/glue-moment-classic.jpg"
+     },
+     {
+    "title": "PUFAS клей универсальный 75м² 500г",
+       "price": "691 ₽",
+       "desc": "Для всех видов обоев.",
+       "image": "/assets/materials/glue-pufas-75m2-500g.jpg"
+     },
+     {
+       "title": "Плитка самоклеящаяся ПВХ 30x60 (уп. 3.6 м²)",
+       "price": "1 114 ₽",
+       "desc": "Самоклеящаяся плитка для стен.",
+       "image": "/assets/materials/tile-pvc-30x60.jpg"
+     },
+     {
+       "title": "Монтажный клей «Жидкие гвозди» акриловый",
+       "price": "442 ₽",
+       "desc": "Для отделочных работ. Быстрая фиксация.",
+       "image": "/assets/materials/liquid-nails-acrylic.jpg"
+     },
+     {
+       "title": "Цементно-песчаная смесь М200 25кг",
+       "price": "149 ₽/шт",
+       "desc": "Универсальная сухая смесь для работ.",
+       "image": "/assets/materials/mix-m200-25kg.jpg"
+    }
+  ]
+}
+
+

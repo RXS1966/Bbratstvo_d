@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>AI-Chat + Live Avatar</title>
+
+  <link rel="stylesheet" href="css/style.css" />
+
+  <style>
+    /* ====== базовая сетка ====== */
+    .main{display:grid;grid-template-columns:minmax(420px,1fr) minmax(480px,1.2fr);gap:20px;padding:16px;align-items:start}
+    .avatar-col{display:flex;flex-direction:column;min-height:0;} /* ВАЖНО */
+    .avatar-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+    .title{font-weight:600}
+    .status{display:flex;align-items:center;gap:8px;font-size:.95rem}
+    .status .dot{width:10px;height:10px;border-radius:50%;background:#ef4444;box-shadow:0 0 10px rgba(239,68,68,.6)}
+    .status.on .dot{background:#22c55e;box-shadow:0 0 10px rgba(34,197,94,.65)}
+    .chat-container{min-height:360px}
+    .input-container{display:flex;gap:8px;align-items:flex-start}
+    #message-input{flex:1;min-height:64px;font-size:16px;line-height:1.35;padding:10px 12px;resize:vertical}
+    .btn{padding:10px 14px;border-radius:10px;border:1px solid #2b3b55;background:#0a1222;color:#eef1f6;cursor:pointer;transition:.15s}
+    .btn.primary{background:#1e293b}
+    .btn:hover{filter:brightness(1.05)}
+    #avatar-toggle.off{background:#1e293b}
+    #avatar-toggle.on{background:#ef476f;color:#fff}
+    .session-footer{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px;border:1px solid #1e293b;background:#0b1324;border-radius:12px;margin-top:8px;color:#cfe3ff}
+
+    /* ====== переключатель темы ====== */
+    #themeToggle{border:1px solid #2b3b55;background:#0a1222;color:#eef1f6;padding:8px 10px;border-radius:10px;cursor:pointer}
+    #themeToggle:hover{filter:brightness(1.08)}
+    #themeIcon{font-size:14px}
+
+    /* ====== тёмная тема ====== */
+    html[data-theme="dark"] body{background:#0e1116;color:#e5e7eb}
+    html[data-theme="dark"] .btn{background:#111827;border-color:#2b3547;color:#e5e7eb}
+    html[data-theme="dark"] .btn.primary{background:#1f2937}
+    html[data-theme="dark"] .session-footer{background:#121a2a;border-color:#2a3448;color:#d5e4ff}
+    html[data-theme="dark"] #message-input{background:#101826;color:#e5e7eb;border-color:#2a3448}
+    html[data-theme="dark"] .status .text{color:#cfd8e3}
+
+    /* ====== адаптив ====== */
+    @media (max-width: 1100px){
+      .main{grid-template-columns:1fr;gap:16px}
+      .avatar-col{order:1}
+      .chat-wrapper{order:2}
+    }
+    @media (max-width: 768px){
+      #message-input{min-height:56px}
+      .session-footer{flex-direction:column;align-items:stretch}
+      .session-footer .info{margin-bottom:6px}
+    }
+    @media (max-width: 420px){
+      .btn{padding:9px 12px}
+      #message-input{min-height:48px}
+    }
+
+    /* ====== ЛЕВО: видео-бокс ====== */
+    .video-box{
+      width:100%;
+      aspect-ratio:16/9;
+      border-radius:16px;
+      overflow:hidden;
+      background:#0d1424;
+      box-shadow:0 10px 30px rgba(0,0,0,.35);
+    }
+    .video-box video{width:100%;height:100%;object-fit:cover;display:block}
+
+    /* ====== ВИДЕО + КНОПКА "Аватар" СПРАВА ====== */
+    .video-row{
+      display:flex;
+      gap:12px;
+      align-items:flex-start;
+    }
+    .video-row .video-box{
+      flex:0 0 50%;
+      max-width:50%;
+    }
+    .avatar-actions{
+      flex:1 1 auto;
+      display:flex;
+      align-items:flex-start;
+      justify-content:flex-start;
+    }
+    #avatar-toggle{
+      height:44px;
+      padding:0 14px;
+      border-radius:12px;
+      white-space:nowrap;
+    }
+
+    /* ====== ВИТРИНА (СТАБИЛЬНАЯ, СО СКРОЛЛОМ ВНУТРИ) ====== */
+    .catalog-wrap{
+      margin-top:12px;
+      border-radius:16px;
+      overflow:hidden;
+      border:1px solid rgba(255,255,255,.08);
+      background:#0d1424;
+      box-shadow:0 10px 30px rgba(0,0,0,.25);
+
+      /* ВАЖНО: НЕ display:none — иначе высоты/скролл часто ломаются */
+      display:flex;
+      flex-direction:column;
+      min-height:0;
+      flex:1 1 auto; /* занимает остаток под аватаром */
+    }
+
+    .catalog-head{
+      flex:0 0 auto;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      padding:12px 12px;
+      border-bottom:1px solid rgba(255,255,255,.08);
+      background:rgba(13,20,36,.95);
+    }
+    .catalog-title{font-weight:700;color:#e5e7eb}
+
+    /* СКРОЛЛ — именно тут */
+    #catalog-mount{
+      flex:1 1 auto;
+      min-height:0;
+      overflow-y:auto;
+      overflow-x:hidden;
+      padding:12px;
+      box-sizing:border-box;
+      color:#e5e7eb;
+      overscroll-behavior:contain;
+      -webkit-overflow-scrolling:touch;
+    }
+
+    /* Свернули: не прячем весь блок, а сворачиваем тело */
+    .catalog-wrap.is-collapsed #catalog-mount{
+      max-height:0;
+      padding-top:0;
+      padding-bottom:0;
+      overflow:hidden;
+    }
+  </style>
+
+  <script src="https://cdn.jsdelivr.net/npm/livekit-client@2.7.5/dist/livekit-client.umd.min.js" crossorigin="anonymous"></script>
+  <script>window.AVATAR_ENABLED = true;</script>
+</head>
+
+<body data-view="desktop">
+  <div class="main">
+
+    <!-- ЛЕВО: Аватар + витрина ПОД ним -->
+    <div class="avatar-col">
+  <div class="avatar-header">
+    <div class="title">НЕЙРОЭКЗАМЕНАТОР по проверке навыков и компетенций</div>
+
+    <div style="display:flex;align-items:center;gap:8px">
+      <button id="themeToggle" aria-label="Переключить тему" title="Переключить тему">
+        <span id="themeIcon">🌙</span>
+      </button>
+
+      <div id="avatar-status" class="status off">
+        <span class="dot"></span><span class="text">аватар выключен</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- РЯД: видео (50%) + кнопка справа -->
+  <div class="video-row">
+    <div class="video-box avatar-mini" id="avatar-video-box">
+      <video id="avatar-video" autoplay playsinline muted></video>
+      <audio id="avatar-audio" preload="auto"></audio>
+    </div>
+
+    <div class="avatar-actions">
+      <button id="avatar-toggle" class="btn off"
+              data-connect="Подключаю..." data-disconnect="Отключаю...">
+        Аватар
+      </button>
+
+      <!-- Можно оставить место под будущие кнопки -->
+      <!-- <button class="btn" type="button">Настройки</button> -->
+    </div>
+  </div>
+
+  <!-- ВИТРИНА (НЕ полоска). Скрываем/показываем целиком -->
+  <section id="catalog-wrap" class="catalog-wrap" aria-hidden="true">
+    <header class="catalog-head">
+      <div class="catalog-title">Витрина</div>
+
+      <!-- ЗАДЕЛ на несколько витрин -->
+      <nav class="catalog-tabs" aria-label="Разделы витрины">
+        <button class="catalog-tab is-active" type="button" data-cat="houses">Дома</button>
+        <button class="catalog-tab" type="button" data-cat="materials">Материалы</button>
+        <button class="catalog-tab" type="button" data-cat="prices">Расценки</button>
+        <button class="catalog-tab" type="button" data-cat="contacts">Контакты</button>
+      </nav>
+
+      <button id="catalog-hide" class="btn" type="button" title="Скрыть витрину">Скрыть</button>
+    </header>
+
+    <div id="catalog-mount"></div>
+  </section>
+</div>
+
+
+    <!-- ПРАВО: Чат -->
+    <div class="chat-wrapper">
+      <div id="chat-container" class="chat-container"></div>
+
+      <div class="input-container">
+        <button id="mic-toggle" class="btn" title="Говорить / Пауза" aria-label="Микрофон">🎤</button>
+        <textarea id="message-input" placeholder="Введите ваше сообщение..." aria-label="Сообщение" rows="2" spellcheck="false"></textarea>
+        <button id="send-button" class="btn">Отправить</button>
+        <button id="open-catalog" type="button" class="btn">Показать витрину</button>
+      </div>
+
+      <div class="session-footer">
+        <div class="info">Для завершения сессии нажмите «Проверка Завершена».</div>
+        <div style="display:flex; gap:8px;">
+          <button id="end-session" class="btn primary" title="Проверка завершена">⏹ Проверка Завершена</button>
+          <button id="clear-history" class="btn" title="Очистить предыдущий диалог">🧹 Очистить диалог</button>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /.main -->
+
+  <script>
+    // Разблок аудио по клику
+    (function () {
+      function unlock() {
+        try {
+          const a = document.getElementById('avatar-audio');
+          if (a) { a.muted = false; a.play().catch(()=>{}); }
+          const AC = window.AudioContext || window.webkitAudioContext;
+          if (AC) { try { const ctx = new AC(); if (ctx.state === 'suspended') ctx.resume(); } catch {} }
+        } catch {}
+        window.removeEventListener('click', unlock, true);
+      }
+      window.addEventListener('click', unlock, true);
+    })();
+
+    // Свернуть/развернуть витрину (НЕ трогаем display)
+    (function(){
+      const wrap = document.getElementById("catalog-wrap");
+      const btn = document.getElementById("catalog-hide");
+      if (!wrap || !btn) return;
+
+      btn.addEventListener("click", () => {
+        const collapsed = wrap.classList.toggle("is-collapsed");
+        btn.textContent = collapsed ? "Развернуть" : "Свернуть";
+      });
+    })();
+  </script>
+
+  <script src="js/avatar.js" defer></script>
+  <script src="js/views/catalog.js" defer></script>
+  <script src="js/chat.js" defer></script>
+
+  <script src="/js/chat.js?v=2026-01-08"></script>
+  <script src="/js/catalog-panels.js?v=2026-01-08"></script>
+
+
+  <script>
+    (function(){
+      const el=document.getElementById('avatar-status'); const txt=el?.querySelector('.text');
+      function refresh(){
+        const enabled=!!(window.AVATAR_ENABLED && window.avatarStream?.enabled);
+        el?.classList.toggle('on',enabled); el?.classList.toggle('off',!enabled);
+        if (txt) txt.textContent = enabled ? 'аватар включён' : 'аватар выключен';
+      }
+      refresh(); setInterval(refresh,1000); window.addEventListener('focus',refresh);
+    })();
+
+    (function themeInit(){
+      const root = document.documentElement;
+      const btn = document.getElementById('themeToggle');
+      const icon = document.getElementById('themeIcon');
+
+      const saved = localStorage.getItem('theme');
+      const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      const initial = saved || (prefersDark ? 'dark' : 'light');
+      apply(initial);
+
+      btn?.addEventListener('click', () => {
+        const next = (root.getAttribute('data-theme') === 'dark') ? 'light' : 'dark';
+        apply(next, true);
+      });
+
+      function apply(mode, remember=true){
+        root.setAttribute('data-theme', mode === 'dark' ? 'dark' : 'light');
+        if (icon) icon.textContent = (mode === 'dark') ? '☀️' : '🌙';
+        if (remember) localStorage.setItem('theme', mode);
+      }
+    })();
+  </script>
+    
+    <script>
+  // 1) Скрыть витрину целиком (без “полоски”)
+  (function(){
+    const wrap = document.getElementById("catalog-wrap");
+    const btn = document.getElementById("catalog-hide");
+    const mount = document.getElementById("catalog-mount");
+    if (!wrap || !btn) return;
+
+    btn.addEventListener("click", () => {
+      wrap.style.display = "none";
+      wrap.setAttribute("aria-hidden", "true");
+      // НЕ очищаю mount — чтобы не мигало, но если хочешь, раскомментируй:
+      // if (mount) mount.innerHTML = "";
+    });
+  })();
+
+  // 2) Wheel-trap: чтобы колёсико работало внутри витрины, а не “передавалось” наружу
+  (function(){
+    const m = document.getElementById("catalog-mount");
+    if (!m) return;
+
+    m.addEventListener("wheel", (e) => {
+      const canScroll = m.scrollHeight > m.clientHeight;
+      if (!canScroll) return;
+
+      const up = e.deltaY < 0;
+      const atTop = m.scrollTop <= 0;
+      const atBottom = (m.scrollTop + m.clientHeight) >= (m.scrollHeight - 1);
+
+      // Если мы НЕ на границе — блокируем прокрутку страницы/родителя
+      if ((!atTop && up) || (!atBottom && !up)) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    }, { passive: false });
+  })();
+
+  // 3) Табы витрины (задел под несколько разделов)
+  (function(){
+    const wrap = document.getElementById("catalog-wrap");
+    const tabs = document.querySelectorAll(".catalog-tab");
+    if (!wrap || !tabs.length) return;
+
+    tabs.forEach(btn => {
+      btn.addEventListener("click", () => {
+        tabs.forEach(b => b.classList.remove("is-active"));
+        btn.classList.add("is-active");
+
+        // Тут ты позже свяжешь с разными JSON/рендерами.
+        // Пока просто пометка в консоль:
+        console.log("[CATALOG] tab:", btn.dataset.cat);
+
+        // 3) Табы витрины
+(function(){
+  const tabs = document.querySelectorAll(".catalog-tab");
+  if (!tabs.length) return;
+
+  function render(cat){
+    // просим catalog.js перерисовать контент по вкладке
+    if (typeof window.renderCatalog === "function") {
+      const payload = window.__CATALOG_LAST_PAYLOAD__ || { items: [] };
+      window.renderCatalog(cat, payload, document.getElementById("catalog-mount"));
+    }
+  }
+
+     function autoSwitchTabByView(viewName) {
+    const v = String(viewName || "").toLowerCase();
+
+    if (v.includes("house") || v.includes("home") || v.includes("dom")) {
+      clickTabByText("дома");
+      return;
+    }
+    if (v.includes("material")) {
+      clickTabByText("материалы");
+      return;
+    }
+    if (v.includes("price") || v.includes("rate") || v.includes("cost")) {
+      clickTabByText("расценки");
+      return;
+    }
+    if (v.includes("contact") || v.includes("kont") || v.includes("contacts")) {
+      clickTabByText("контакты");
+      return;
+    }
+  }
+
+
+  <div class="catalog-wrap" id="catalog-wrap">
+  <div class="catalog-header">
+    <div class="tabs">...</div>
+    <button id="catalog-hide">Скрыть</button>
+  </div>
+
+  <div class="catalog-body" id="catalog-mount">
+    <!-- сюда chat.js будет рендерить карточки -->
+  </div>
+</div>
+
+
+  tabs.forEach(btn => {
+    btn.addEventListener("click", () => {
+      tabs.forEach(b => b.classList.remove("is-active"));
+      btn.classList.add("is-active");
+
+      const cat = (btn.dataset.cat || "houses").toLowerCase();
+      render(cat);
+    });
+  });
+})();
+
+      });
+    });
+  })();
+</script>
+
+
+</body>
+</html>
+

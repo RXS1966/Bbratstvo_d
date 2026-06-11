@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+
+  <title>AI-Chat + Live Avatar</title>
+
+  <link rel="stylesheet" href="css/style.css" />
+
+  <style>
+    /* ====== базовая сетка ====== */
+    .main{display:grid;grid-template-columns:minmax(420px,1fr) minmax(480px,1.2fr);gap:20px;padding:16px;align-items:start}
+    .avatar-col .video-box{width:100%;aspect-ratio:16/9;border-radius:16px;overflow:hidden;background:#0d1424;box-shadow:0 10px 30px rgba(0,0,0,.35)}
+    .avatar-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+    .title{font-weight:600}
+    .status{display:flex;align-items:center;gap:8px;font-size:.95rem}
+    .status .dot{width:10px;height:10px;border-radius:50%;background:#ef4444;box-shadow:0 0 10px rgba(239,68,68,.6)}
+    .status.on .dot{background:#22c55e;box-shadow:0 0 10px rgba(34,197,94,.65)}
+    .chat-container{min-height:360px}
+    .input-container{display:flex;gap:8px;align-items:flex-start}
+    #message-input{flex:1;min-height:64px;font-size:16px;line-height:1.35;padding:10px 12px;resize:vertical}
+    .btn{padding:10px 14px;border-radius:10px;border:1px solid #2b3b55;background:#0a1222;color:#eef1f6;cursor:pointer;transition:.15s}
+    .btn.primary{background:#1e293b}
+    .btn:hover{filter:brightness(1.05)}
+    #avatar-toggle.off{background:#1e293b}
+    #avatar-toggle.on{background:#ef476f;color:#fff}
+    .session-footer{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px;border:1px solid #1e293b;background:#0b1324;border-radius:12px;margin-top:8px;color:#cfe3ff}
+
+    /* ====== переключатель темы ====== */
+    #themeToggle{border:1px solid #2b3b55;background:#0a1222;color:#eef1f6;padding:8px 10px;border-radius:10px;cursor:pointer}
+    #themeToggle:hover{filter:brightness(1.08)}
+    #themeIcon{font-size:14px}
+
+    /* ====== тёмная тема (без ломки существующих стилей) ====== */
+    html[data-theme="dark"] body{background:#0e1116;color:#e5e7eb}
+    html[data-theme="dark"] .avatar-col .video-box{background:#0b1020;box-shadow:0 10px 30px rgba(0,0,0,.5)}
+    html[data-theme="dark"] .btn{background:#111827;border-color:#2b3547;color:#e5e7eb}
+    html[data-theme="dark"] .btn.primary{background:#1f2937}
+    html[data-theme="dark"] .session-footer{background:#121a2a;border-color:#2a3448;color:#d5e4ff}
+    html[data-theme="dark"] #message-input{background:#101826;color:#e5e7eb;border-color:#2a3448}
+    html[data-theme="dark"] .status .text{color:#cfd8e3}
+
+    /* ====== адаптив ====== */
+    @media (max-width: 1100px){
+      .main{grid-template-columns:1fr;gap:16px}
+      .avatar-col{order:1}
+      .chat-wrapper{order:2}
+    }
+    @media (max-width: 768px){
+      #message-input{min-height:56px}
+      .session-footer{flex-direction:column;align-items:stretch}
+      .session-footer .info{margin-bottom:6px}
+    }
+    @media (max-width: 420px){
+      .btn{padding:9px 12px}
+      #message-input{min-height:48px}
+    }
+  </style>
+
+  <script src="https://cdn.jsdelivr.net/npm/livekit-client@2.7.5/dist/livekit-client.umd.min.js"></script>
+  <script>window.AVATAR_ENABLED = true;</script>
+</head>
+
+
+  <body data-view="desktop">
+  <div class="main">
+
+  <div class="avatar-col">
+
+  <!-- </div>   -->
+  
+
+    <!-- ЛЕВО: Аватар -->
+<div class="avatar-header">
+
+  <div class="title">
+    Онлайн экзаменатор по проверке навыков и компетенций
+  </div>
+
+  <div class="header-right">
+
+    <button id="themeToggle">
+      <span id="themeIcon">🌙</span>
+    </button>
+
+    <div class="status-text">● аватар выключен</div>
+
+    <div id="timer">⏱ 0 сек</div>
+
+  </div>
+
+</div>
+
+</div>
+      <div class="video-box">
+        <video id="avatar-video" autoplay playsinline muted></video>
+        <audio id="avatar-audio" preload="auto"></audio>
+      </div>
+      <div style="margin-top:10px; display:flex; gap:8px;">
+        <button id="avatar-toggle" class="btn off" data-connect="Подключаю..." data-disconnect="Отключаю...">Аватар</button>
+      </div>
+
+
+
+       <div style="margin-bottom:10px;">
+    📋 Перед началом:
+  </div>
+
+  <div style="font-size:14px; opacity:0.8;">
+    — Время фиксируется автоматически<br>
+    — Отвечайте в свободной форме<br>
+    — После завершения нажмите "Проверка завершена"
+  </div>
+
+  <button id="start-test" class="btn primary" style="margin-top:12px;">
+    ▶ Начать тест
+  </button>
+
+</div>
+
+
+      <div id="examHeader">
+  РЕЗУЛЬТАТЫ · ВЫВОДЫ · РЕКОМЕНДАЦИИ
+</div>
+
+      <div id="examResultPodium" style="
+  margin-top: 10px;
+  padding: 12px;
+  background: red;
+  color: white;
+  border-radius: 8px;
+  font-weight: bold;
+">
+  ТЕСТ ПОДИУМ
+  </div>
+</div>
+
+<div id="start-screen" style="
+  padding: 16px;
+  border-radius: 12px;
+  background: rgba(15,15,25,0.9);
+  margin-bottom: 12px;
+">
+
+ 
+
+    <!-- ПРАВО: Чат -->
+    <div class="chat-wrapper">
+      <div id="chat-container" class="chat-container"></div>
+      <div class="input-container">
+        <button id="mic-toggle" class="btn" title="Говорить / Пауза" aria-label="Микрофон">🎤</button>
+        <textarea id="message-input" placeholder="Введите ваше сообщение..." aria-label="Сообщение" rows="2" spellcheck="false"></textarea>
+        <button id="send-button" class="btn">Отправить</button>
+      </div>
+
+      <!-- КНОПКИ: очистка + завершить -->
+      <div class="session-footer">
+        <div class="info">Для завершения сессии нажмите «Завершить сессию».</div>
+        <div style="display:flex; gap:8px;">
+          <button id="end-session"  class="btn primary" title="Завершить сессию">⏹ Завершить сессию</button>
+          <button id="clear-history" class="btn" title="Очистить предыдущий диалог">🧹 Очистить диалог</button>
+        </div>
+      </div>
+    </div>
+  </div>
+ 
+  <audio id="ttsAudio"></audio>
+  <video id="avatar"></video>
+  <div id="questionText"></div>
+
+  
+
+  <script>
+    /* Разблокировка аудио по первому клику (iOS/Chrome policy) */
+    (function () {
+      function unlock() {
+        try {
+          const a = document.getElementById('avatar-audio');
+          if (a) { a.muted = false; a.play().catch(()=>{}); }
+          const AC = window.AudioContext || window.webkitAudioContext;
+          if (AC) { try { const ctx = new AC(); if (ctx.state === 'suspended') ctx.resume(); } catch {} }
+        } catch {}
+        window.removeEventListener('click', unlock, true);
+      }
+      window.addEventListener('click', unlock, true);
+    })();
+  </script>
+
+  <script>
+document.addEventListener("DOMContentLoaded", () => {
+
+  let time = 0;
+
+  setInterval(() => {
+    time++;
+    const el = document.getElementById("timer");
+
+    if (el) {
+      el.innerText = "⏱ " + time + " сек";
+    } else {
+      console.log("timer НЕ найден");
+    }
+
+  }, 1000);
+
+});
+</script>
+
+  <!-- Порядок строгий -->
+  
+  <script src="js/chat.js" defer></script>
+  
+
+  <script>
+(() => {
+  const root = document.documentElement;
+  const inputBar = document.querySelector('.input-container');
+  if (!inputBar) return;
+
+  const setH = () => {
+    const h = inputBar.offsetHeight || 96;
+    root.style.setProperty('--footer-h', h + 'px');
+  };
+
+  // первичная установка + обновления
+  window.addEventListener('load', setH, {passive:true});
+  window.addEventListener('resize', setH, {passive:true});
+  if ('ResizeObserver' in window){
+    new ResizeObserver(setH).observe(inputBar);
+  }
+})();
+</script>
+
+
+  <script>
+    /* Иконка статуса аватара (как было) */
+    (function(){
+      const el=document.getElementById('avatar-status'); const txt=el?.querySelector('.text');
+      function refresh(){
+        const enabled=!!(window.AVATAR_ENABLED && window.avatarStream?.enabled);
+        el?.classList.toggle('on',enabled); el?.classList.toggle('off',!enabled);
+        if (txt) txt.textContent = enabled ? 'аватар включён' : 'аватар выключен';
+      }
+      refresh(); setInterval(refresh,1000); window.addEventListener('focus',refresh);
+    })();
+
+    // TTS
+  
+
+    /* Переключатель темы с памятью и уважением системной темы */
+    (function themeInit(){
+      const root = document.documentElement;
+      const btn = document.getElementById('themeToggle');
+      const icon = document.getElementById('themeIcon');
+
+      const saved = localStorage.getItem('theme'); // 'light'|'dark'|null
+      const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      const initial = saved || (prefersDark ? 'dark' : 'light');
+      apply(initial);
+
+      if (!saved && window.matchMedia) {
+        try{
+          const mq = window.matchMedia('(prefers-color-scheme: dark)');
+          mq.addEventListener('change', e => apply(e.matches ? 'dark' : 'light', false));
+        }catch(e){/* Safari < 14 */}
+      }
+
+      btn?.addEventListener('click', () => {
+        const next = (root.getAttribute('data-theme') === 'dark') ? 'light' : 'dark';
+        apply(next, true);
+      });
+
+      function apply(mode, remember=true){
+        root.setAttribute('data-theme', mode === 'dark' ? 'dark' : 'light');
+        if (icon) icon.textContent = (mode === 'dark') ? '☀️' : '🌙';
+        if (remember) localStorage.setItem('theme', mode);
+      }
+    })();
+  </script>
+  <script>
+(() => {
+  const KEY = 'deviceMode';
+  const buttons = document.querySelectorAll('.device-switch .device');
+  const body = document.body;
+
+  function apply(mode) {
+    body.setAttribute('data-device', mode);
+    buttons.forEach(b => b.classList.toggle('active', b.dataset.device === mode));
+    try { localStorage.setItem(KEY, mode); } catch {}
+  }
+
+  // init from storage
+  let saved = 'desktop';
+  try { saved = localStorage.getItem(KEY) || 'desktop'; } catch {}
+  apply(saved);
+
+  // events
+  buttons.forEach(b => b.addEventListener('click', () => apply(b.dataset.device)));
+})();
+</script>
+
+</body>
+</html>
+

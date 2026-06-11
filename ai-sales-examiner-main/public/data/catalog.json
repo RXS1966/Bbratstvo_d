@@ -1,0 +1,9 @@
+{
+  "items": [
+    {"id":"65","title":"Дом 65","area":"65 м²","floors":"1","img":"assets/houses/65.jpg"},
+    {"id":"85","title":"Дом 85","area":"85 м²","floors":"1","img":"assets/houses/85.jpg"},
+    {"id":"88","title":"Дом 88","area":"88 м²","floors":"1","img":"assets/houses/88.jpg"},
+    {"id":"103","title":"Дом 103","area":"103 м²","floors":"2","img":"assets/houses/103.jpg"},
+    {"id":"105","title":"Дом 105","area":"105 м²","floors":"2","img":"assets/houses/105.jpg"}
+  ]
+}

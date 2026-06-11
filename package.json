@@ -1,0 +1,13 @@
+{
+  "name": "variant-3-frontend",
+  "private": true,
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w @repo/web",
+    "build": "npm run build -w @repo/web",
+    "preview": "npm run preview -w @repo/web"
+  }
+}
