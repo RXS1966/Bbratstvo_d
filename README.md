@@ -1,47 +1,67 @@
-# Bbratstvo_d — Neuroexam MVP (Variant_3)
+# Bbratstvo_d — Neuroexam MVP
 
-Моя наработка по стажировке: monorepo **UI-kit + Vite + FastAPI + PostgreSQL**.
+**Нейроэкзаменатор для HR** — пилотный MVP: диагностика компетенций, кейсы,
+экзаменатор с LLM-оценкой, кабинет руководителя.
 
-Публичный фронт, **один домен** с API, **простой логин** (без SSO/LDAP),
-общий **UI-kit** `@repo/ui`.
+Наработка по стажировке. Стек: **FastAPI + PostgreSQL + React (Vite) + monorepo UI-kit**.
 
-## Структура
+[![CI](https://github.com/RXS1966/Bbratstvo_d/actions/workflows/ci.yml/badge.svg)](https://github.com/RXS1966/Bbratstvo_d/actions/workflows/ci.yml)
 
+---
+
+## Для коллег: как открыть репозиторий
+
+Репозиторий **публичный** — достаточно ссылки:
+
+**https://github.com/RXS1966/Bbratstvo_d**
+
+Клонирование:
+
+```bash
+git clone https://github.com/RXS1966/Bbratstvo_d.git
+cd Bbratstvo_d
 ```
-Variant_3/
-  docker-compose.yml   # PostgreSQL
-  packages/ui/
-  apps/web/
-  apps/api/            # FastAPI + Alembic
-```
 
-## Запуск
+### Если нужны права на запись (push, PR)
 
-### 0. PostgreSQL
+Владелец репозитория добавляет коллегу как collaborator:
 
-Запустите **Docker Desktop**, затем:
+**https://github.com/RXS1966/Bbratstvo_d/settings/access**
+
+→ **Add people** → логин GitHub коллеги → роль **Write** (или **Maintain**).
+
+После приглашения коллега получит письмо от GitHub и сможет пушить в репозиторий.
+
+---
+
+## Что внутри
+
+| Папка | Назначение |
+|-------|------------|
+| `apps/api/` | FastAPI, Alembic, pytest |
+| `apps/web/` | React SPA (Vite, TanStack Query) |
+| `packages/ui/` | Общий UI-kit `@repo/ui` |
+| `e2e/` | Playwright E2E-тесты |
+| `docs/` | Справочники, roadmap, инструкции |
+
+**MVP-контур:** роль → диагностика → кейс → оценка (LLM) → экзаменатор → отчёт /
+кабинет руководителя.
+
+---
+
+## Быстрый старт (Windows)
+
+**Нужно:** Docker Desktop, Node.js 20+, Python 3.12+.
+
+### 1. PostgreSQL
 
 ```powershell
-cd Fronted\Variant_3
 docker compose up -d
-docker ps
 ```
 
-В `.env` API используйте драйвер **psycopg** (не psycopg2):
+БД на порту **5433** (чтобы не конфликтовать с локальным PostgreSQL на 5432).
 
-`DATABASE_URL=postgresql+psycopg://neuroexam:neuroexam@127.0.0.1:5433/neuroexam`
-
-Контейнер слушает **5433** на хосте (внутри — 5432), чтобы не пересекаться с
-локальным PostgreSQL на Windows.
-
-Если ошибка `password authentication failed for user "neuroexam"` — вы, скорее
-всего, попали не в Docker, а в другой сервер на порту 5432. Используйте **5433**
-в `.env` и перезапустите `docker compose up -d`.
-
-Если миграции падают с `UnicodeDecodeError` — обновите `.env`, выполните
-`pip install -r requirements.txt` и снова `.\migrate.ps1`.
-
-### 1. Миграции и API
+### 2. Backend
 
 ```powershell
 cd apps\api
@@ -50,104 +70,118 @@ copy .env.example .env
 .\run.ps1
 ```
 
-### 2. Frontend
+API: http://localhost:8000/api/docs
+
+### 3. Frontend
 
 ```powershell
-cd Fronted\Variant_3
+# из корня репозитория
 copy apps\web\.env.example apps\web\.env
+npm install
 npm run dev
 ```
 
-Откройте http://localhost:5173/login — **admin** / **admin**.
+UI: http://localhost:5173/login
 
-## Экраны MVP
+### Демо-логины
+
+| Логин | Пароль | Роль |
+|-------|--------|------|
+| `demo` | `demo` | Кандидат |
+| `manager` | `manager` | Руководитель |
+| `admin` | `admin` | Администратор |
+
+**Путь кандидата:** диагностика → завершить срез → кейс → результат → экзаменатор.
+
+---
+
+## Экраны и API
 
 | Раздел | API | Роли |
 |--------|-----|------|
 | Диагностика | `/api/diagnostic/sessions` | candidate, admin |
-| Кейс | `/api/cases` (нужен завершённый срез) | candidate, admin |
-| Результат | `/api/results`, `/api/results/{session_id}` | candidate, admin |
-| Экзаменатор | `/api/exam/sessions` (нужен завершённый срез) | candidate, admin |
+| Кейс | `/api/cases` | candidate, admin |
+| Результат | `/api/results` | candidate, admin |
+| Экзаменатор | `/api/exam/sessions` | candidate, admin |
 | Кабинет руководителя | `/api/manager/overview` | manager, admin |
 
-**Путь кандидата:** диагностика → завершить срез → кейс → результат →
-экзаменатор.
+Справочник API: [docs/spravochnik-api-docs.md](docs/spravochnik-api-docs.md)
 
-Демо-логины: **demo** / **demo** (кандидат), **manager** / **manager**,
-**admin** / **admin**.
+---
 
-### LLM-оценка (кейсы и экзамен)
+## LLM-оценка (опционально)
 
-В `apps/api/.env` (см. `.env.example`):
+В `apps/api/.env` (шаблон — `.env.example`):
 
 ```env
 OPENAI_API_KEY=sk-...
 LLM_MODEL=gpt-4o-mini
 ```
 
-После **старта экзамена** API генерирует **3 вопроса** через LLM (с учётом
-среза и отправленных кейсов); без ключа — фиксированные шаблоны. После
-отправки кейса или завершения экзамена — **балл (0–100)** и **feedback** в БД.
-Без ключа оценки — подсказка в feedback, перезапуск `.\run.ps1` после ключа.
-`GET /api/health` → `llm_configured`, `db_ok` (проверка PostgreSQL).
+Без ключа работают фиксированные шаблоны вопросов и подсказки в feedback.
+Проверка: `GET /api/health` → поля `llm_configured`, `db_ok`.
 
-Демо-данные в БД: `cd apps/api && python seed_demo.py` (после миграций).
+**Локально без OpenAI:** [Ollama](https://ollama.com) — см. комментарии в
+`apps/api/.env.example`.
 
-CI: `.github/workflows/ci.yml` (pytest + сборка web).
+Демо-данные: `cd apps/api && python seed_demo.py`
 
-Повторы запросов к LLM при сбоях: `LLM_MAX_RETRIES`, `LLM_RETRY_DELAY_SECONDS`
-(см. `.env.example`; общий клиент `app/services/llm_client.py`).
+---
 
-**Из России для проверки** (без OpenAI): любой API с форматом OpenAI
-`chat/completions`. Удобнее всего **Ollama** на своём ПК (бесплатно):
+## Тесты и CI
 
 ```powershell
-ollama pull llama3.2
+# unit-тесты API
+cd apps\api
+pytest -q
+
+# сборка фронта
+npm run build
+
+# E2E (нужны запущенные API + web + PostgreSQL)
+cd e2e
+npm ci
+npx playwright install chromium
+npm test
 ```
 
-В `.env`: `OPENAI_BASE_URL=http://127.0.0.1:11434/v1`, `LLM_MODEL=llama3.2`,
-`OPENAI_API_KEY=ollama`. Альтернатива — **DeepSeek** (`api.deepseek.com`).
-Подробнее — комментарии в `apps/api/.env.example`.
+CI (GitHub Actions): pytest + build web + Playwright E2E — см.
+[Actions](https://github.com/RXS1966/Bbratstvo_d/actions).
 
-Документация: http://localhost:8000/api/docs  
-Справочник по `/api/docs`: [docs/spravochnik-api-docs.md](docs/spravochnik-api-docs.md)
+---
 
-### Снапшот (zip)
+## Документация
 
-Из `Fronted`:
+| Файл | Описание |
+|------|----------|
+| [docs/VNESHNIY-ZAPUSK.md](docs/VNESHNIY-ZAPUSK.md) | Запуск для внешнего человека |
+| [docs/ROADMAP-ABCDE-ZHURNAL.md](docs/ROADMAP-ABCDE-ZHURNAL.md) | Журнал улучшений |
+| [docs/spravochnik-api-docs.md](docs/spravochnik-api-docs.md) | Справочник `/api/docs` |
+| [apps/api/README.md](apps/api/README.md) | Backend |
+| [apps/web/README.md](apps/web/README.md) | Frontend |
+| [e2e/README.md](e2e/README.md) | E2E-тесты |
 
-```powershell
-python make_variant3_zip.py
+---
+
+## Структура репозитория
+
+```
+.
+├── apps/
+│   ├── api/          # FastAPI + Alembic + pytest
+│   └── web/          # Vite + React
+├── packages/ui/      # @repo/ui
+├── e2e/              # Playwright
+├── docs/
+├── docker-compose.yml
+└── .github/workflows/ci.yml
 ```
 
-Архив: `Fronted/neuroexam-variant3-mvp-YYYYMMDD-roadmap-abcde.zip`  
-(без `node_modules`, `.venv`, `.env` — только `.env.example`).
+---
 
-**Для стороннего человека:** [docs/VNESHNIY-ZAPUSK.md](docs/VNESHNIY-ZAPUSK.md),
-журнал улучшений [docs/ROADMAP-ABCDE-ZHURNAL.md](docs/ROADMAP-ABCDE-ZHURNAL.md).
+## Контакты
 
-## Хронология
+Автор: [@RXS1966](https://github.com/RXS1966)
 
-1. **2026-05-04** — monorepo UI + web.
-2. **2026-05-18** — FastAPI, UI-kit, связка с фронтом.
-3. **2026-05-18** — Диагностика (CRUD), снапшот zip.
-4. **2026-05-18** — PostgreSQL + Alembic; экран **Кейс** с привязкой к срезу.
-5. **2026-05-18** — порт БД 5433, справочники в `docs/`, снапшот
-   `neuroexam-variant3-mvp-20260518-postgres.zip`.
-6. **2026-05-18** — экран **Результат**: сводка по срезу и кейсам из БД.
-7. **2026-05-18** — **Роли**: кандидат / руководитель / admin, кабинет
-   руководителя, меню и API по правам.
-8. **2026-05-18** — **LLM-оценка** ответов на кейс (OpenAI-compatible API).
-9. **2026-05-21** — снапшот `neuroexam-variant3-mvp-*-llm-roles.zip`.
-10. **2026-05-25** — экран **Экзаменатор** (`/api/exam`), миграция
-    `exam_sessions` / `exam_questions`, обзор экзаменов в кабинете руководителя.
-11. **2026-05-25** — парсинг ошибок API на фронте (`detail` из FastAPI).
-12. **2026-05-25** — **Результат**: сводка по кейсам и экзаменам одного среза.
-13. **2026-05-25** — снапшот `neuroexam-variant3-mvp-20260525-llm-roles.zip`.
-14. **2026-05-25** — pytest: diagnostic, cases, exam, results (SQLite, мок LLM).
-15. **2026-05-25** — LLM-генерация вопросов экзамена при `POST …/exam/…/start`.
-16. **2026-05-25** — `llm_client`: общий HTTP-клиент LLM с повторами (Ollama).
-17. **2026-05-25** — чеклист пути кандидата (Главная, Диагностика).
-18. **2026-05-25** — кабинет руководителя: фильтр и drill-down по кандидату.
-19. **2026-05-25** — Roadmap A–E: CI, health+db, seed, batch LLM экзамена,
-    users в БД, React Query, CSV export, Playwright E2E, zip с пояснениями.
+Вопросы и предложения — через [Issues](https://github.com/RXS1966/Bbratstvo_d/issues)
+или напрямую автору репозитория.
