@@ -1,4 +1,6 @@
-# Variant_3 — monorepo: UI-kit + Vite + FastAPI + PostgreSQL
+# Bbratstvo_d — Neuroexam MVP (Variant_3)
+
+Моя наработка по стажировке: monorepo **UI-kit + Vite + FastAPI + PostgreSQL**.
 
 Публичный фронт, **один домен** с API, **простой логин** (без SSO/LDAP),
 общий **UI-kit** `@repo/ui`.
