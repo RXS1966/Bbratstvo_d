@@ -89,6 +89,10 @@ jobs:
       - name: Install web dependencies
         run: npm ci
 
+      - name: Install e2e dependencies
+        working-directory: e2e
+        run: npm ci
+
       - name: Start web
         run: |
           npm run dev -w @repo/web -- --host 127.0.0.1 --port 5173 &
@@ -114,11 +118,11 @@ jobs:
 
       - name: Install Playwright (Chromium)
         working-directory: e2e
-        run: npx playwright@1.48.0 install --with-deps chromium
+        run: npx playwright install --with-deps chromium
 
       - name: Run Playwright tests
         working-directory: e2e
-        run: npx playwright@1.48.0 test
+        run: npm test
 
       - name: Upload Playwright artifacts
         if: always()
